@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>가로세로 낱말 배틀 - 홀수팀 vs 짝수팀</title>
+  <!-- 프리미엄 폰트: Outfit (영어/숫자) 및 Noto Sans KR (한국어) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 메인 게임 영역 -->
+  <div class="game-container">
+    
+    <!-- 상단 대시보드 & 타이머 -->
+    <header class="game-header">
+      <!-- 홀수팀 정보 -->
+      <div class="header-team odd-info">
+        <div class="combo-badge" id="odd-combo">2 콤보! 🔥</div>
+        <div class="score-display">
+          <span class="score-label" id="odd-team-name-label">홀수팀</span>
+          <span class="score-val" id="odd-score">0</span>
+        </div>
+      </div>
+
+      <!-- 공통 타이머 & 라운드 -->
+      <div class="timer-center-panel">
+        <div class="timer-round-info">
+          <span class="round-label">ROUND</span>
+          <span class="round-num" id="timer-round-num">1 / 15</span>
+        </div>
+        <div class="timer-bar-container" id="timer-bar-container">
+          <div class="timer-progress-fill" id="timer-progress-fill" style="width: 100%;"></div>
+          <span class="timer-seconds-txt" id="timer-seconds">20</span>
+        </div>
+      </div>
+
+      <!-- 짝수팀 정보 -->
+      <div class="header-team even-info">
+        <div class="score-display">
+          <span class="score-val" id="even-score">0</span>
+          <span class="score-label" id="even-team-name-label">짝수팀</span>
+        </div>
+        <div class="combo-badge" id="even-combo">2 콤보! 🔥</div>
+      </div>
+    </header>
+
+    <!-- 2분할 게임 플레이 레이아웃 -->
+    <main class="game-layout">
+      
+      <!-- [왼쪽] 홀수팀 진영 -->
+      <section class="team-panel odd-panel" id="odd-panel">
+        <div class="question-card">
+          <div class="question-desc" id="odd-question-desc">문제가 이곳에 나타납니다. 먼저 정답을 맞혀보세요!</div>
+          <div class="question-hint" id="odd-question-hint">초성 힌트: 🔒 (오답 시 잠금 해제)</div>
+        </div>
+        <div class="choices-grid" id="odd-choices-container">
+          <!-- JS가 버튼 4개를 렌더링함 -->
+        </div>
+        <!-- 잠금/대기 오버레이 -->
+        <div class="lock-overlay" id="odd-lock">
+          <div class="lock-content">
+            <div class="lock-icon">🔒</div>
+            <div class="lock-msg">오답 패널티 발생!</div>
+            <div class="lock-sub">잠시 동안 입력할 수 없습니다.</div>
+            <div class="lock-time" id="odd-lock-time">2초</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- [오른쪽] 짝수팀 진영 -->
+      <section class="team-panel even-panel" id="even-panel">
+        <div class="question-card">
+          <div class="question-desc" id="even-question-desc">문제가 이곳에 나타납니다. 먼저 정답을 맞혀보세요!</div>
+          <div class="question-hint" id="even-question-hint">초성 힌트: 🔒 (오답 시 잠금 해제)</div>
+        </div>
+        <div class="choices-grid" id="even-choices-container">
+          <!-- JS가 버튼 4개를 렌더링함 -->
+        </div>
+        <!-- 잠금/대기 오버레이 -->
+        <div class="lock-overlay" id="even-lock">
+          <div class="lock-content">
+            <div class="lock-icon">🔒</div>
+            <div class="lock-msg">오답 패널티 발생!</div>
+            <div class="lock-sub">잠시 동안 입력할 수 없습니다.</div>
+            <div class="lock-time" id="even-lock-time">2초</div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- 모달 1: 로비 및 초기 설정 -->
+  <div class="modal-overlay active" id="lobby-modal">
+    <div class="lobby-card">
+      <div class="lobby-header">
+        <div class="lobby-icon">⚡</div>
+        <h1 class="lobby-title">일상생활 단어 퀴즈 배틀</h1>
+        <p class="lobby-subtitle">칠판을 반으로 나누어 펼치는 홀수팀 vs 짝수팀의 실시간 대결!</p>
+      </div>
+
+      <div class="lobby-body">
+        <!-- 팀명 커스텀 입력 -->
+        <div class="settings-group">
+          <h3>👥 팀명 커스텀</h3>
+          <div class="team-names-input">
+            <div class="input-field odd-input-field">
+              <label for="odd-name-input">왼쪽 진영 (기본: 홀수팀)</label>
+              <input type="text" id="odd-name-input" placeholder="홀수팀" value="홀수팀">
+            </div>
+            <div class="input-field even-input-field">
+              <label for="even-name-input">오른쪽 진영 (기본: 짝수팀)</label>
+              <input type="text" id="even-name-input" placeholder="짝수팀" value="짝수팀">
+            </div>
+          </div>
+        </div>
+
+        <!-- 옵션 설정 -->
+        <div class="settings-group">
+          <h3>⚙️ 게임 옵션</h3>
+          <div class="options-flex">
+            <label class="toggle-switch">
+              <input type="checkbox" id="sound-toggle" checked>
+              <span class="slider"></span>
+              <span class="toggle-label">효과음 재생</span>
+            </label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="bgm-toggle">
+              <span class="slider"></span>
+              <span class="toggle-label">배경 음악 재생</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="lobby-footer">
+        <button class="btn btn-secondary btn-lg" id="open-editor-btn">✏️ 단어 편집기</button>
+        <button class="btn btn-primary btn-lg" id="start-game-btn">🚀 배틀 시작하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 모달 2: 최종 대결 결과 -->
+  <div class="modal-overlay" id="result-modal">
+    <canvas id="confetti-canvas"></canvas>
+    <div class="result-card">
+      <div class="result-badge">GAME OVER</div>
+      <h1 class="result-title" id="result-title">🏆 홀수팀 승리!</h1>
+      <p class="result-description" id="result-description">홀수팀이 1200점으로 짝수팀(900점)을 꺾고 우승했습니다!</p>
+      
+      <div class="result-buttons">
+        <button class="btn btn-secondary btn-lg" id="go-lobby-btn">🏠 처음으로</button>
+        <button class="btn btn-primary btn-lg" id="restart-game-btn">🔄 다시 대결하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 모달 3: 퀴즈 편집기 -->
+  <div class="modal-overlay" id="editor-modal">
+    <div class="editor-card">
+      <div class="editor-header">
+        <h2>✏️ 일상 단어 퀴즈 편집기</h2>
+        <p>게임에 출제될 퀴즈를 직접 추가하고 삭제할 수 있습니다.</p>
+      </div>
+      
+      <!-- 퀴즈 추가 폼 -->
+      <div class="editor-add-section">
+        <div class="add-inputs">
+          <input type="text" id="new-word" placeholder="정답 단어 (예: 수박)" maxlength="15">
+          <input type="text" id="new-hint" placeholder="초성 힌트 (예: ㅅㅂ)" maxlength="10">
+          <input type="text" id="new-desc" placeholder="문제 설명 (예: 여름에 먹는 줄무늬 과일)">
+        </div>
+        <button class="btn btn-primary" id="add-quiz-btn">추가하기</button>
+      </div>
+
+      <!-- 퀴즈 목록 테이블 -->
+      <div class="editor-table-container">
+        <div class="editor-table-header">
+          <div class="editor-header-cell word-cell">정답 단어</div>
+          <div class="editor-header-cell hint-cell">초성 힌트</div>
+          <div class="editor-header-cell desc-cell">문제 설명</div>
+          <div class="editor-header-cell action-cell">작업</div>
+        </div>
+        <div class="editor-table-body" id="editor-list-container">
+          <!-- JS가 동적으로 목록을 생성함 -->
+        </div>
+      </div>
+
+      <div class="editor-footer">
+        <button class="btn btn-secondary btn-lg" id="close-editor-btn">닫기 및 적용</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 비즈니스 로직 연동 -->
+  <script src="app.js"></script>
+</body>
+</html>
