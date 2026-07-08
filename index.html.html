@@ -1,0 +1,1019 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>구구단 칠판 대결 게임 (홀수팀 vs 짝수팀)</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts (DoHyeon) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Nanum Gothic', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .title-font {
+      font-family: 'Do Hyeon', sans-serif;
+    }
+    /* 터치 피드백 이펙트 */
+    .touch-active:active {
+      transform: scale(0.95);
+    }
+    /* 반짝이는 배경 애니메이션 */
+    @keyframes pulse-soft {
+      0%, 100% { opacity: 0.2; }
+      50% { opacity: 0.4; }
+    }
+    .bg-pulse {
+      animation: pulse-soft 3s infinite;
+    }
+    /* 스크롤바 커스텀 */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-hidden select-none">
+
+  <!-- 시작 화면 (대기 화면) -->
+  <div id="start-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 p-6">
+    <div class="absolute inset-0 bg-gradient-to-tr from-blue-900/30 to-red-900/30 bg-pulse"></div>
+    
+    <div class="relative z-10 text-center max-w-2xl px-4">
+      <div class="flex justify-center gap-6 mb-6">
+        <span class="text-6xl animate-bounce">⚡</span>
+        <span class="text-6xl animate-bounce" style="animation-delay: 0.2s">⚔️</span>
+        <span class="text-6xl animate-bounce" style="animation-delay: 0.4s">⚡</span>
+      </div>
+      <h1 class="text-5xl md:text-7xl title-font text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-red-400 mb-4 tracking-wider">
+        구구단 배틀 칠판 격돌
+      </h1>
+      <p class="text-gray-300 text-lg md:text-xl mb-12">
+        칠판을 반으로 나누어 동시에 대결하는 구구단 스피드 퀴즈!<br>
+        <span class="text-amber-400 font-bold">홀수팀(왼쪽)</span>과 <span class="text-emerald-400 font-bold">짝수팀(오른쪽)</span>의 자존심을 건 승부!
+      </p>
+
+      <!-- 게임 설정 정보 요약 -->
+      <div class="grid grid-cols-3 gap-4 max-w-md mx-auto mb-10 bg-slate-900/80 p-5 rounded-2xl border border-slate-700">
+        <div class="text-center">
+          <p class="text-xs text-gray-400">총 문제 수</p>
+          <p class="text-2xl font-bold text-sky-400">15 문제</p>
+        </div>
+        <div class="text-center border-x border-slate-700">
+          <p class="text-xs text-gray-400 font-medium">제한 시간</p>
+          <p class="text-2xl font-bold text-amber-400">20초 / 문제</p>
+        </div>
+        <div class="text-center">
+          <p class="text-xs text-gray-400">출제 범위</p>
+          <p class="text-2xl font-bold text-emerald-400">2단 ~ 9단</p>
+        </div>
+      </div>
+
+      <button id="btn-start" class="touch-active w-full md:w-80 py-5 bg-gradient-to-r from-blue-500 to-red-500 hover:from-blue-600 hover:to-red-600 text-white font-extrabold text-2xl rounded-2xl shadow-lg shadow-purple-500/30 transition-all transform hover:scale-105 active:scale-95 title-font tracking-wide">
+        경기 시작하기 ⚔️
+      </button>
+    </div>
+  </div>
+
+  <!-- 게임 헤더 (전체 진행도 표시) -->
+  <header class="bg-slate-950/80 border-b border-slate-800 py-3 px-6 flex justify-between items-center z-20">
+    <div class="flex items-center gap-3">
+      <span class="text-2xl">⚡</span>
+      <h2 class="title-font text-xl md:text-2xl bg-gradient-to-r from-blue-400 to-red-400 bg-clip-text text-transparent">칠판 구구단 배틀</h2>
+    </div>
+    
+    <!-- 중앙 글로벌 정보 (라운드) -->
+    <div class="bg-slate-900 px-6 py-1.5 rounded-full border border-slate-700 text-center shadow-inner">
+      <span class="text-xs text-gray-400 block uppercase tracking-widest">ROUND</span>
+      <span id="global-round" class="text-xl md:text-2xl font-black text-amber-400 title-font">1 / 15</span>
+    </div>
+
+    <!-- 초기화/포기 버튼 -->
+    <button id="btn-reset" class="touch-active bg-slate-800 hover:bg-slate-700 text-xs text-gray-300 px-4 py-2 rounded-lg border border-slate-700 transition">
+      <i class="fa-solid fa-rotate-left mr-1"></i> 처음으로
+    </button>
+  </header>
+
+  <!-- 메인 게임 영역 (좌우 반반 분할) -->
+  <main class="flex-1 flex flex-col md:flex-row relative z-10 w-full h-full overflow-hidden">
+    
+    <!-- 중앙 경계선 -->
+    <div class="hidden md:block absolute left-1/2 top-0 bottom-0 w-1 bg-slate-800 z-30 transform -translate-x-1/2 shadow-lg">
+      <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-slate-950 border-4 border-slate-800 rounded-full w-12 h-12 flex items-center justify-center shadow-xl">
+        <span class="text-lg font-bold text-gray-400 title-font">VS</span>
+      </div>
+    </div>
+
+    <!-- ==================== 왼쪽: 홀수팀 (BLUE) ==================== -->
+    <section id="p1-area" class="flex-1 flex flex-col justify-between p-4 md:p-6 bg-gradient-to-b from-slate-900 to-blue-950/60 relative overflow-hidden border-b md:border-b-0 md:border-r border-slate-800">
+      <!-- 배경 장식 -->
+      <div class="absolute -left-16 -top-16 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl pointer-events-none"></div>
+      
+      <!-- 상단 팀 상태창 -->
+      <div class="relative z-10 flex justify-between items-center bg-blue-950/80 p-3 rounded-xl border border-blue-800/40 shadow-md">
+        <div>
+          <span class="bg-blue-600 text-white text-xs font-black px-2.5 py-1 rounded-md uppercase tracking-wider title-font">TEAM 1</span>
+          <h3 class="text-xl font-bold text-blue-300 mt-1 title-font">홀수팀 🔵</h3>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-blue-400 font-medium">현재 점수</p>
+          <p id="p1-score" class="text-3xl font-extrabold text-blue-400 title-font tracking-wider">0 점</p>
+        </div>
+      </div>
+
+      <!-- 타이머 및 콤보 게이지 영역 -->
+      <div class="relative z-10 my-4">
+        <!-- 타이머 수치 및 바 -->
+        <div class="flex justify-between items-center mb-1 px-1">
+          <span class="text-xs text-blue-300 font-bold"><i class="fa-regular fa-clock mr-1 animate-pulse"></i> 제한 시간</span>
+          <span id="p1-time-text" class="text-lg font-bold text-blue-400 title-font">20.0s</span>
+        </div>
+        <div class="w-full bg-slate-800 h-3.5 rounded-full overflow-hidden border border-slate-700/50 p-0.5">
+          <div id="p1-timer-bar" class="bg-gradient-to-r from-cyan-400 to-blue-500 h-full rounded-full transition-all duration-100 ease-linear" style="width: 100%;"></div>
+        </div>
+
+        <!-- 콤보 표시기 -->
+        <div id="p1-combo-container" class="flex items-center gap-2 mt-2 opacity-0 transition-all duration-300">
+          <span class="bg-amber-500 text-slate-950 text-xs font-black px-2 py-0.5 rounded-full title-font animate-bounce">COMBO</span>
+          <span id="p1-combo-text" class="text-lg font-black text-amber-400 title-font">3 연속 정답!</span>
+        </div>
+      </div>
+
+      <!-- 구구단 칠판 영역 (문제 판) -->
+      <div class="relative z-10 flex-1 flex flex-col justify-center items-center bg-slate-950/70 rounded-2xl border-2 border-blue-900/50 my-2 p-6 shadow-inner min-h-[160px] md:min-h-0">
+        <!-- 상태 안내 레이어 -->
+        <div id="p1-status-overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center rounded-2xl z-20 hidden">
+          <div class="text-center p-4">
+            <div id="p1-overlay-icon" class="text-5xl mb-3">✅</div>
+            <p id="p1-overlay-msg" class="text-xl font-bold text-blue-300 title-font">정답을 맞췄습니다!</p>
+            <p class="text-sm text-gray-400 mt-2">상대팀을 기다리는 중...</p>
+          </div>
+        </div>
+
+        <span class="text-xs text-blue-400 font-bold tracking-widest uppercase mb-2">QUESTION</span>
+        <div id="p1-question" class="text-5xl md:text-7xl font-extrabold text-white tracking-widest title-font animate-pulse">
+          7 × 8 = ?
+        </div>
+      </div>
+
+      <!-- 객관식 버튼 영역 (4지선다) -->
+      <div class="relative z-10 grid grid-cols-2 gap-3 mt-2">
+        <button onclick="submitAnswer(1, 0)" id="p1-opt-0" class="touch-active p1-option-btn py-4 md:py-6 bg-slate-800/90 hover:bg-slate-700/90 active:bg-blue-900 border-2 border-slate-700/60 hover:border-blue-500/50 rounded-2xl text-2xl md:text-3xl font-extrabold text-blue-100 transition-all duration-150 shadow-md">
+          ?
+        </button>
+        <button onclick="submitAnswer(1, 1)" id="p1-opt-1" class="touch-active p1-option-btn py-4 md:py-6 bg-slate-800/90 hover:bg-slate-700/90 active:bg-blue-900 border-2 border-slate-700/60 hover:border-blue-500/50 rounded-2xl text-2xl md:text-3xl font-extrabold text-blue-100 transition-all duration-150 shadow-md">
+          ?
+        </button>
+        <button onclick="submitAnswer(1, 2)" id="p1-opt-2" class="touch-active p1-option-btn py-4 md:py-6 bg-slate-800/90 hover:bg-slate-700/90 active:bg-blue-900 border-2 border-slate-700/60 hover:border-blue-500/50 rounded-2xl text-2xl md:text-3xl font-extrabold text-blue-100 transition-all duration-150 shadow-md">
+          ?
+        </button>
+        <button onclick="submitAnswer(1, 3)" id="p1-opt-3" class="touch-active p1-option-btn py-4 md:py-6 bg-slate-800/90 hover:bg-slate-700/90 active:bg-blue-900 border-2 border-slate-700/60 hover:border-blue-500/50 rounded-2xl text-2xl md:text-3xl font-extrabold text-blue-100 transition-all duration-150 shadow-md">
+          ?
+        </button>
+      </div>
+
+    </section>
+
+    <!-- ==================== 오른쪽: 짝수팀 (RED) ==================== -->
+    <section id="p2-area" class="flex-1 flex flex-col justify-between p-4 md:p-6 bg-gradient-to-b from-slate-900 to-red-950/60 relative overflow-hidden">
+      <!-- 배경 장식 -->
+      <div class="absolute -right-16 -top-16 w-64 h-64 bg-red-500/5 rounded-full blur-3xl pointer-events-none"></div>
+
+      <!-- 상단 팀 상태창 -->
+      <div class="relative z-10 flex justify-between items-center bg-red-950/80 p-3 rounded-xl border border-red-800/40 shadow-md">
+        <div>
+          <span class="bg-red-600 text-white text-xs font-black px-2.5 py-1 rounded-md uppercase tracking-wider title-font">TEAM 2</span>
+          <h3 class="text-xl font-bold text-red-300 mt-1 title-font">짝수팀 🔴</h3>
+        </div>
+        <div class="text-right">
+          <p class="text-xs text-red-400 font-medium">현재 점수</p>
+          <p id="p2-score" class="text-3xl font-extrabold text-red-400 title-font tracking-wider">0 점</p>
+        </div>
+      </div>
+
+      <!-- 타이머 및 콤보 게이지 영역 -->
+      <div class="relative z-10 my-4">
+        <!-- 타이머 수치 및 바 -->
+        <div class="flex justify-between items-center mb-1 px-1">
+          <span class="text-xs text-red-300 font-bold"><i class="fa-regular fa-clock mr-1 animate-pulse"></i> 제한 시간</span>
+          <span id="p2-time-text" class="text-lg font-bold text-red-400 title-font">20.0s</span>
+        </div>
+        <div class="w-full bg-slate-800 h-3.5 rounded-full overflow-hidden border border-slate-700/50 p-0.5">
+          <div id="p2-timer-bar" class="bg-gradient-to-r from-orange-400 to-red-500 h-full rounded-full transition-all duration-100 ease-linear" style="width: 100%;"></div>
+        </div>
+
+        <!-- 콤보 표시기 -->
+        <div id="p2-combo-container" class="flex items-center gap-2 mt-2 opacity-0 transition-all duration-300">
+          <span class="bg-amber-500 text-slate-950 text-xs font-black px-2 py-0.5 rounded-full title-font animate-bounce">COMBO</span>
+          <span id="p2-combo-text" class="text-lg font-black text-amber-400 title-font">3 연속 정답!</span>
+        </div>
+      </div>
+
+      <!-- 구구단 칠판 영역 (문제 판) -->
+      <div class="relative z-10 flex-1 flex flex-col justify-center items-center bg-slate-950/70 rounded-2xl border-2 border-red-900/50 my-2 p-6 shadow-inner min-h-[160px] md:min-h-0">
+        <!-- 상태 안내 레이어 -->
+        <div id="p2-status-overlay" class="absolute inset-0 bg-slate-950/90 flex flex-col items-center justify-center rounded-2xl z-20 hidden">
+          <div class="text-center p-4">
+            <div id="p2-overlay-icon" class="text-5xl mb-3">✅</div>
+            <p id="p2-overlay-msg" class="text-xl font-bold text-red-300 title-font">정답을 맞췄습니다!</p>
+            <p class="text-sm text-gray-400 mt-2">상대팀을 기다리는 중...</p>
+          </div>
+        </div>
+
+        <span class="text-xs text-red-400 font-bold tracking-widest uppercase mb-2">QUESTION</span>
+        <div id="p2-question" class="text-5xl md:text-7xl font-extrabold text-white tracking-widest title-font animate-pulse">
+          8 × 9 = ?
+        </div>
+      </div>
+
+      <!-- 객관식 버튼 영역 (4지선다) -->
+      <div class="relative z-10 grid grid-cols-2 gap-3 mt-2">
+        <button onclick="submitAnswer(2, 0)" id="p2-opt-0" class="touch-active p2-option-btn py-4 md:py-6 bg-slate-800/90 hover:bg-slate-700/90 active:bg-red-900 border-2 border-slate-700/60 hover:border-red-500/50 rounded-2xl text-2xl md:text-3xl font-extrabold text-red-100 transition-all duration-150 shadow-md">
+          ?
+        </button>
+        <button onclick="submitAnswer(2, 1)" id="p2-opt-1" class="touch-active p2-option-btn py-4 md:py-6 bg-slate-800/90 hover:bg-slate-700/90 active:bg-red-900 border-2 border-slate-700/60 hover:border-red-500/50 rounded-2xl text-2xl md:text-3xl font-extrabold text-red-100 transition-all duration-150 shadow-md">
+          ?
+        </button>
+        <button onclick="submitAnswer(2, 2)" id="p2-opt-2" class="touch-active p2-option-btn py-4 md:py-6 bg-slate-800/90 hover:bg-slate-700/90 active:bg-red-900 border-2 border-slate-700/60 hover:border-red-500/50 rounded-2xl text-2xl md:text-3xl font-extrabold text-red-100 transition-all duration-150 shadow-md">
+          ?
+        </button>
+        <button onclick="submitAnswer(2, 3)" id="p2-opt-3" class="touch-active p2-option-btn py-4 md:py-6 bg-slate-800/90 hover:bg-slate-700/90 active:bg-red-900 border-2 border-slate-700/60 hover:border-red-500/50 rounded-2xl text-2xl md:text-3xl font-extrabold text-red-100 transition-all duration-150 shadow-md">
+          ?
+        </button>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- 게임 결과 및 리더보드 통합 오버레이 (모달) -->
+  <div id="result-screen" class="fixed inset-0 z-40 flex flex-col items-center bg-slate-950/95 p-4 md:p-6 hidden overflow-y-auto">
+    <div class="relative z-10 w-full max-w-5xl text-center px-2 py-6 md:py-8">
+      
+      <span class="text-5xl md:text-6xl animate-bounce mb-2 block">🏆</span>
+      <h2 class="text-3xl md:text-5xl title-font bg-gradient-to-r from-amber-400 to-yellow-300 bg-clip-text text-transparent mb-1">
+        대결 종료! 승리팀은?
+      </h2>
+      <p class="text-gray-400 mb-6 text-xs md:text-sm">15라운드 간의 뜨거운 구구단 격돌의 기록</p>
+
+      <!-- 왕관 및 메인 승리 타이틀 -->
+      <div class="mb-6 inline-block bg-slate-900/80 px-8 py-3.5 rounded-2xl border border-slate-700 shadow-xl">
+        <h3 id="winner-announcement" class="text-2xl md:text-4xl font-black title-font text-yellow-400">
+          홀수팀 🔵 대승리!
+        </h3>
+      </div>
+
+      <!-- 명예의 전당 점수 제출 섹션 (승리팀 전용) -->
+      <div id="leaderboard-register-area" class="max-w-2xl mx-auto mb-8 bg-gradient-to-r from-blue-950/40 to-red-950/40 border border-amber-500/30 p-5 rounded-2xl shadow-lg relative overflow-hidden">
+        <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl"></div>
+        <h4 class="text-lg md:text-xl font-bold text-amber-300 mb-2 title-font"><i class="fa-solid fa-file-pen mr-2"></i>승리팀 명예의 전당 등록 ⭐️</h4>
+        <p class="text-xs text-gray-300 mb-4">구글 시트에 멋진 승리의 대기록을 저장해 보세요!</p>
+        
+        <div class="flex flex-col sm:flex-row gap-3 justify-center items-center">
+          <div class="w-full sm:w-80">
+            <input type="text" id="winner-name-input" maxlength="15" placeholder="대표 학생 이름을 입력해 주세요" class="w-full px-4 py-3 bg-slate-900 border-2 border-slate-700 focus:border-amber-400 text-white rounded-xl outline-none text-center font-bold placeholder:text-gray-500">
+          </div>
+          <button id="btn-submit-score" class="touch-active w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-400 text-slate-950 font-extrabold rounded-xl hover:from-amber-600 transition shadow-md title-font flex items-center justify-center gap-2">
+            <i class="fa-solid fa-paper-plane"></i> 점수 등록하기
+          </button>
+        </div>
+        <p id="submit-loading-msg" class="text-xs text-amber-400 mt-2 font-medium hidden"><i class="fa-solid fa-spinner animate-spin mr-1"></i> 구글 시트에 기록을 정렬 및 저장하는 중입니다...</p>
+      </div>
+
+      <!-- 대결 상세 스탯 비교 카드 & 실시간 리더보드 (2단 그리드) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-5xl mx-auto mb-8">
+        
+        <!-- 왼쪽: 경기 최종 스탯 (lg:col-span-5) -->
+        <div class="lg:col-span-5 space-y-4">
+          <div class="bg-gradient-to-br from-slate-900 to-blue-950/30 border border-blue-900/40 p-4.5 rounded-2xl text-left">
+            <h4 class="text-base font-bold text-blue-300 mb-3 title-font">🔵 홀수팀 기록</h4>
+            <div class="space-y-2 text-xs md:text-sm">
+              <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                <span class="text-gray-400">최종 스코어</span>
+                <span id="stat-p1-score" class="font-bold text-blue-400">0 점</span>
+              </div>
+              <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                <span class="text-gray-400">정답 개수</span>
+                <span id="stat-p1-correct" class="font-bold text-blue-300">0 / 15</span>
+              </div>
+              <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                <span class="text-gray-400">최대 콤보</span>
+                <span id="stat-p1-combo" class="font-bold text-amber-400">0 연속</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-400">평균 응답 속도</span>
+                <span id="stat-p1-speed" class="font-bold text-emerald-400">0.0초</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="bg-gradient-to-br from-slate-900 to-red-950/30 border border-red-900/40 p-4.5 rounded-2xl text-left">
+            <h4 class="text-base font-bold text-red-300 mb-3 title-font">🔴 짝수팀 기록</h4>
+            <div class="space-y-2 text-xs md:text-sm">
+              <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                <span class="text-gray-400">최종 스코어</span>
+                <span id="stat-p2-score" class="font-bold text-red-400">0 점</span>
+              </div>
+              <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                <span class="text-gray-400">정답 개수</span>
+                <span id="stat-p2-correct" class="font-bold text-red-300">0 / 15</span>
+              </div>
+              <div class="flex justify-between border-b border-slate-800 pb-1.5">
+                <span class="text-gray-400">최대 콤보</span>
+                <span id="stat-p2-combo" class="font-bold text-amber-400">0 연속</span>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-400">평균 응답 속도</span>
+                <span id="stat-p2-speed" class="font-bold text-emerald-400">0.0초</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 오른쪽: 실시간 구글 시트 리더보드 (lg:col-span-7) -->
+        <div class="lg:col-span-7 bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 flex flex-col min-h-[300px]">
+          <div class="flex justify-between items-center mb-3">
+            <h4 class="text-base font-extrabold text-amber-400 title-font flex items-center gap-1.5">
+              <i class="fa-solid fa-ranking-star"></i> 명예의 전당 (구글 시트 연동)
+            </h4>
+            <!-- 새로고침 버튼 -->
+            <button id="btn-refresh-leaderboard" class="touch-active bg-slate-800 hover:bg-slate-700 text-gray-400 hover:text-white p-1.5 rounded-lg border border-slate-700 transition flex items-center justify-center">
+              <i class="fa-solid fa-arrows-rotate text-xs"></i>
+            </button>
+          </div>
+          
+          <!-- 리더보드 테이블 -->
+          <div class="flex-1 overflow-y-auto max-h-[320px] rounded-lg border border-slate-800">
+            <table class="w-full text-center text-xs md:text-sm border-collapse">
+              <thead class="bg-slate-950 text-gray-400 font-bold sticky top-0 z-10">
+                <tr>
+                  <th class="py-2.5 px-2">순위</th>
+                  <th class="py-2.5 px-3">이름 (팀명)</th>
+                  <th class="py-2.5 px-2">점수</th>
+                  <th class="py-2.5 px-2 text-right pr-4">일시</th>
+                </tr>
+              </thead>
+              <tbody id="leaderboard-body" class="divide-y divide-slate-800/60">
+                <!-- 로딩 중 또는 데이터 표시용 -->
+                <tr>
+                  <td colspan="4" class="py-12 text-gray-400">
+                    <i class="fa-solid fa-spinner animate-spin text-xl text-amber-400 mb-2"></i>
+                    <p>리더보드 데이터를 불러오고 있습니다...</p>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 리플레이 및 바로가기 버튼 -->
+      <div class="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-xl mx-auto">
+        <button id="btn-replay" class="touch-active w-full py-4 bg-gradient-to-r from-blue-500 to-red-500 hover:from-blue-600 hover:to-red-600 text-white font-extrabold text-lg rounded-2xl transition shadow-lg title-font tracking-wide">
+          다시 한 판 대결하기 🔄
+        </button>
+        <a href="https://docs.google.com/spreadsheets/d/1GfVCdl4a9ZCE7l-hBThoNiExaCApYo_MqY0TnehSZBk/edit?gid=0#gid=0" target="_blank" class="touch-active w-full py-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-gray-300 font-bold text-base rounded-2xl transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-table text-emerald-400"></i> 구글 시트 확인하기
+        </a>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 간단 경고/안내 커스텀 모달 -->
+  <div id="toast-message" class="fixed top-24 left-1/2 transform -translate-x-1/2 bg-slate-900 border border-slate-700 px-6 py-3.5 rounded-xl shadow-2xl z-50 flex items-center gap-3 transition-all duration-300 pointer-events-none opacity-0">
+    <span class="text-xl">📢</span>
+    <p id="toast-text" class="font-bold text-sm text-gray-200">안내 메시지입니다.</p>
+  </div>
+
+  <!-- -------------------- 게임 로직 스크립트 -------------------- -->
+  <script>
+    // ==========================================
+    // [설정 완료] 제공해주신 웹 앱 URL이 성공적으로 동기화되었습니다.
+    // ==========================================
+    const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzhvs_g-rS2cwPmAHnl65pOnBQM4Yk7fDl-ahOx6gwKTBfBFY-StANXC6rLhfSq7-3JVQ/exec"; 
+
+    const MAX_ROUNDS = 15;
+    const TIME_LIMIT = 20; // 20초
+
+    // 게임 상태 변수
+    let currentRound = 1;
+    let roundActive = false; // 현재 라운드 진행 중 여부
+    let winningTeamName = ""; // 승리한 팀의 정보 ("홀수팀" 또는 "짝수팀")
+    let winningScore = 0; // 승리한 팀의 점수
+    let scoreSubmitted = false; // 점수 제출 여부 중복방지
+
+    // 플레이어 1(홀수팀), 플레이어 2(짝수팀) 상태 데이터
+    const p1 = {
+      name: "홀수팀",
+      score: 0,
+      combo: 0,
+      maxCombo: 0,
+      correctCount: 0,
+      answerTimes: [],
+      currentAnswer: null, // 정답 값
+      selectedAnswer: null, // 제출한 정답 번호
+      hasAnswered: false,
+      timeLeft: TIME_LIMIT,
+      timerInterval: null,
+      scoreAdded: 0
+    };
+
+    const p2 = {
+      name: "짝수팀",
+      score: 0,
+      combo: 0,
+      maxCombo: 0,
+      correctCount: 0,
+      answerTimes: [],
+      currentAnswer: null,
+      selectedAnswer: null,
+      hasAnswered: false,
+      timeLeft: TIME_LIMIT,
+      timerInterval: null,
+      scoreAdded: 0
+    };
+
+    // DOM 요소 캐싱
+    const startScreen = document.getElementById('start-screen');
+    const resultScreen = document.getElementById('result-screen');
+    const btnStart = document.getElementById('btn-start');
+    const btnReset = document.getElementById('btn-reset');
+    const btnReplay = document.getElementById('btn-replay');
+    const globalRoundEl = document.getElementById('global-round');
+    
+    // 리더보드 관련 DOM
+    const leaderboardRegisterArea = document.getElementById('leaderboard-register-area');
+    const winnerNameInput = document.getElementById('winner-name-input');
+    const btnSubmitScore = document.getElementById('btn-submit-score');
+    const btnRefreshLeaderboard = document.getElementById('btn-refresh-leaderboard');
+    const leaderboardBody = document.getElementById('leaderboard-body');
+    const submitLoadingMsg = document.getElementById('submit-loading-msg');
+
+    // 이벤트 리스너 바인딩
+    window.addEventListener('DOMContentLoaded', () => {
+      btnStart.addEventListener('click', startGame);
+      btnReset.addEventListener('click', confirmReset);
+      btnReplay.addEventListener('click', startGame);
+      btnSubmitScore.addEventListener('click', handleScoreSubmission);
+      btnRefreshLeaderboard.addEventListener('click', fetchLeaderboardData);
+      
+      // 엔터키 지원
+      winnerNameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          handleScoreSubmission();
+        }
+      });
+    });
+
+    // 게임 시작 시 초기화
+    function startGame() {
+      // 오버레이 제거
+      startScreen.classList.add('hidden');
+      resultScreen.classList.add('hidden');
+
+      // 전역 상태 초기화
+      currentRound = 1;
+      scoreSubmitted = false;
+      winningTeamName = "";
+      winningScore = 0;
+      winnerNameInput.value = "";
+      leaderboardRegisterArea.classList.remove('hidden');
+      submitLoadingMsg.classList.add('hidden');
+      btnSubmitScore.disabled = false;
+
+      // 양쪽 플레이어 데이터 완전히 리셋
+      resetPlayerState(p1);
+      resetPlayerState(p2);
+
+      // 점수판 UI 업데이트
+      updateScoreUI();
+
+      // 첫 라운드 진행
+      startNextRound();
+    }
+
+    function resetPlayerState(player) {
+      player.score = 0;
+      player.combo = 0;
+      player.maxCombo = 0;
+      player.correctCount = 0;
+      player.answerTimes = [];
+      player.currentAnswer = null;
+      player.selectedAnswer = null;
+      player.hasAnswered = false;
+      player.timeLeft = TIME_LIMIT;
+      if (player.timerInterval) clearInterval(player.timerInterval);
+      player.timerInterval = null;
+    }
+
+    // 다음 라운드 시작
+    function startNextRound() {
+      if (currentRound > MAX_ROUNDS) {
+        endGame();
+        return;
+      }
+
+      // 라운드 활성화
+      roundActive = true;
+      globalRoundEl.textContent = `${currentRound} / ${MAX_ROUNDS}`;
+
+      // 양쪽 플레이어 라운드 개별 데이터 리셋
+      p1.hasAnswered = false;
+      p1.selectedAnswer = null;
+      p1.timeLeft = TIME_LIMIT;
+
+      p2.hasAnswered = false;
+      p2.selectedAnswer = null;
+      p2.timeLeft = TIME_LIMIT;
+
+      // 오버레이 및 스타일 초기화
+      hideStatusOverlay(1);
+      hideStatusOverlay(2);
+      resetOptionButtonStyles(1);
+      resetOptionButtonStyles(2);
+
+      // 새로운 문제 생성
+      const q1 = generateMultiplicationQuestion();
+      const q2 = generateMultiplicationQuestion();
+
+      // 플레이어 1 문제 배치
+      p1.currentAnswer = q1.answer;
+      document.getElementById('p1-question').innerHTML = `${q1.num1} <span class="text-blue-400 font-black">×</span> ${q1.num2}`;
+      setupOptions(1, q1.options);
+
+      // 플레이어 2 문제 배치
+      p2.currentAnswer = q2.answer;
+      document.getElementById('p2-question').innerHTML = `${q2.num1} <span class="text-red-400 font-black">×</span> ${q2.num2}`;
+      setupOptions(2, q2.options);
+
+      // 각각의 타이머 시작
+      startPlayerTimer(1);
+      startPlayerTimer(2);
+    }
+
+    // 문제 생성 함수 (구구단 2단 ~ 9단)
+    function generateMultiplicationQuestion() {
+      const num1 = Math.floor(Math.random() * 8) + 2; // 2~9
+      const num2 = Math.floor(Math.random() * 8) + 2; // 2~9
+      const answer = num1 * num2;
+
+      // 오답 목록 생성
+      const wrongAnswers = new Set();
+      while (wrongAnswers.size < 3) {
+        let offset = (Math.floor(Math.random() * 5) - 2) * (Math.random() > 0.5 ? 1 : num1);
+        let wrong = answer + (offset === 0 ? (Math.random() > 0.5 ? 4 : -4) : offset);
+        
+        if (wrong > 0 && wrong !== answer) {
+          wrongAnswers.add(wrong);
+        }
+      }
+
+      // 정답과 오답 혼합
+      const options = [answer, ...wrongAnswers];
+      options.sort(() => Math.random() - 0.5);
+
+      return { num1, num2, answer, options };
+    }
+
+    // 선택지 배치
+    function setupOptions(playerNum, options) {
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`p${playerNum}-opt-${i}`);
+        btn.textContent = options[i];
+        btn.dataset.value = options[i];
+        btn.disabled = false;
+      }
+    }
+
+    // 각각의 플레이어 타이머 구동
+    function startPlayerTimer(playerNum) {
+      const player = (playerNum === 1) ? p1 : p2;
+      const bar = document.getElementById(`p${playerNum}-timer-bar`);
+      const text = document.getElementById(`p${playerNum}-time-text`);
+
+      if (player.timerInterval) clearInterval(player.timerInterval);
+
+      player.timerInterval = setInterval(() => {
+        if (!roundActive) {
+          clearInterval(player.timerInterval);
+          return;
+        }
+
+        player.timeLeft -= 0.1;
+
+        if (player.timeLeft <= 0) {
+          player.timeLeft = 0;
+          clearInterval(player.timerInterval);
+          handleTimeOut(playerNum);
+        }
+
+        const percentage = (player.timeLeft / TIME_LIMIT) * 100;
+        bar.style.width = `${percentage}%`;
+        text.textContent = `${player.timeLeft.toFixed(1)}s`;
+
+        if (player.timeLeft <= 5) {
+          bar.classList.remove('from-cyan-400', 'to-blue-500', 'from-orange-400', 'to-red-500');
+          bar.classList.add('bg-red-600', 'animate-pulse');
+          text.classList.add('text-red-500', 'scale-110');
+        } else {
+          bar.classList.remove('bg-red-600', 'animate-pulse');
+          text.classList.remove('text-red-500', 'scale-110');
+          if (playerNum === 1) {
+            bar.classList.add('from-cyan-400', 'to-blue-500');
+          } else {
+            bar.classList.add('from-orange-400', 'to-red-500');
+          }
+        }
+      }, 100);
+    }
+
+    // 정답 제출 처리
+    function submitAnswer(playerNum, optionIndex) {
+      const player = (playerNum === 1) ? p1 : p2;
+      if (player.hasAnswered || !roundActive) return;
+
+      player.hasAnswered = true;
+      player.selectedAnswer = optionIndex;
+      clearInterval(player.timerInterval);
+
+      const takenTime = TIME_LIMIT - player.timeLeft;
+      player.answerTimes.push(takenTime);
+
+      const btn = document.getElementById(`p${playerNum}-opt-${optionIndex}`);
+      const submittedValue = parseInt(btn.dataset.value);
+
+      const isCorrect = (submittedValue === player.currentAnswer);
+
+      disableOptions(playerNum);
+
+      if (isCorrect) {
+        player.correctCount++;
+        player.combo++;
+        if (player.combo > player.maxCombo) {
+          player.maxCombo = player.combo;
+        }
+
+        const speedBonus = Math.round((player.timeLeft / TIME_LIMIT) * 100);
+        const baseScore = 100;
+        const comboBonus = player.combo * 10;
+        const scoreAdded = baseScore + speedBonus + comboBonus;
+        player.score += scoreAdded;
+
+        player.scoreAdded = scoreAdded;
+
+        btn.classList.add('bg-emerald-600', 'border-emerald-400', 'text-white');
+        showStatusOverlay(playerNum, '✅', `정답입니다! (+${scoreAdded}점)`, 'emerald');
+        showCombo(playerNum);
+      } else {
+        player.combo = 0;
+        btn.classList.add('bg-rose-600', 'border-rose-400', 'text-white');
+        highlightCorrectAnswer(playerNum);
+        showStatusOverlay(playerNum, '❌', `틀렸습니다! (정답: ${player.currentAnswer})`, 'rose');
+        hideCombo(playerNum);
+      }
+
+      updateScoreUI();
+      checkRoundCompletion();
+    }
+
+    // 시간 초과 처리
+    function handleTimeOut(playerNum) {
+      const player = (playerNum === 1) ? p1 : p2;
+      if (player.hasAnswered) return;
+
+      player.hasAnswered = true;
+      player.combo = 0;
+      player.answerTimes.push(TIME_LIMIT);
+
+      disableOptions(playerNum);
+      highlightCorrectAnswer(playerNum);
+
+      showStatusOverlay(playerNum, '⏱️', `시간 초과! (정답: ${player.currentAnswer})`, 'amber');
+      hideCombo(playerNum);
+
+      checkRoundCompletion();
+    }
+
+    // 양쪽 다 제출했는지 검사
+    function checkRoundCompletion() {
+      if (p1.hasAnswered && p2.hasAnswered) {
+        roundActive = false;
+        setTimeout(() => {
+          currentRound++;
+          startNextRound();
+        }, 1800);
+      }
+    }
+
+    // 결과 오버레이 제어
+    function showStatusOverlay(playerNum, icon, message, themeColor) {
+      const overlay = document.getElementById(`p${playerNum}-status-overlay`);
+      const iconEl = document.getElementById(`p${playerNum}-overlay-icon`);
+      const msgEl = document.getElementById(`p${playerNum}-overlay-msg`);
+
+      iconEl.textContent = icon;
+      msgEl.textContent = message;
+
+      overlay.classList.remove('bg-emerald-950/90', 'bg-rose-950/90', 'bg-amber-950/90', 'bg-slate-950/95');
+      overlay.classList.add(`bg-${themeColor}-950/95`);
+      overlay.classList.remove('hidden');
+    }
+
+    // 결과 오버레이 숨기기
+    function hideStatusOverlay(playerNum) {
+      const overlay = document.getElementById(`p${playerNum}-status-overlay`);
+      if (overlay) overlay.classList.add('hidden');
+    }
+
+    // 옵션 활성화/비활성화
+    function disableOptions(playerNum) {
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`p${playerNum}-opt-${i}`);
+        if (btn) btn.disabled = true;
+      }
+    }
+
+    // 옵션 버튼 스타일 원복
+    function resetOptionButtonStyles(playerNum) {
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`p${playerNum}-opt-${i}`);
+        if (btn) {
+          btn.className = `touch-active p${playerNum}-option-btn py-4 md:py-6 bg-slate-800/90 hover:bg-slate-700/90 active:bg-${playerNum === 1 ? 'blue' : 'red'}-900 border-2 border-slate-700/60 hover:border-${playerNum === 1 ? 'blue' : 'red'}-500/50 rounded-2xl text-2xl md:text-3xl font-extrabold text-${playerNum === 1 ? 'blue' : 'red'}-100 transition-all duration-150 shadow-md`;
+          btn.disabled = false;
+        }
+      }
+    }
+
+    // 정답 하이라이트
+    function highlightCorrectAnswer(playerNum) {
+      const player = (playerNum === 1) ? p1 : p2;
+      for (let i = 0; i < 4; i++) {
+        const btn = document.getElementById(`p${playerNum}-opt-${i}`);
+        if (btn && parseInt(btn.dataset.value) === player.currentAnswer) {
+          btn.classList.remove('bg-slate-800/90');
+          btn.classList.add('bg-emerald-700', 'border-emerald-400', 'text-white');
+        }
+      }
+    }
+
+    // 스코어 UI 실시간 업데이트
+    function updateScoreUI() {
+      document.getElementById('p1-score').textContent = `${p1.score.toLocaleString()} 점`;
+      document.getElementById('p2-score').textContent = `${p2.score.toLocaleString()} 점`;
+    }
+
+    // 콤보 애니메이션 제어
+    function showCombo(playerNum) {
+      const player = (playerNum === 1) ? p1 : p2;
+      const container = document.getElementById(`p${playerNum}-combo-container`);
+      const text = document.getElementById(`p${playerNum}-combo-text`);
+
+      if (container && player.combo >= 2) {
+        text.textContent = `${player.combo} 연속 정답! 🔥`;
+        container.classList.remove('opacity-0');
+        container.classList.add('opacity-100');
+      }
+    }
+
+    // 콤보 숨기기
+    function hideCombo(playerNum) {
+      const container = document.getElementById(`p${playerNum}-combo-container`);
+      if (container) {
+        container.classList.remove('opacity-100');
+        container.classList.add('opacity-0');
+      }
+    }
+
+    // 게임 완료 및 최종 결과 도출
+    function endGame() {
+      if (p1.timerInterval) clearInterval(p1.timerInterval);
+      if (p2.timerInterval) clearInterval(p2.timerInterval);
+
+      resultScreen.classList.remove('hidden');
+
+      // 승자 타이틀 결정 및 구글 시트 등록 대상 지정
+      const winnerAnnouncement = document.getElementById('winner-announcement');
+      if (p1.score > p2.score) {
+        winningTeamName = "홀수팀";
+        winningScore = p1.score;
+        winnerAnnouncement.innerHTML = '🔵 홀수팀 최종 대승리! 🏆';
+        winnerAnnouncement.className = 'text-2xl md:text-4xl font-black title-font text-blue-400 animate-pulse';
+        leaderboardRegisterArea.classList.remove('hidden');
+      } else if (p2.score > p1.score) {
+        winningTeamName = "짝수팀";
+        winningScore = p2.score;
+        winnerAnnouncement.innerHTML = '🔴 짝수팀 최종 대승리! 🏆';
+        winnerAnnouncement.className = 'text-2xl md:text-4xl font-black title-font text-red-400 animate-pulse';
+        leaderboardRegisterArea.classList.remove('hidden');
+      } else {
+        winningTeamName = "무승부";
+        winningScore = p1.score;
+        winnerAnnouncement.innerHTML = '🤝 치열한 승부 끝에 무승부! 🤝';
+        winnerAnnouncement.className = 'text-2xl md:text-4xl font-black title-font text-amber-400';
+        
+        // 동점 시에는 등록 불가 (지시사항: "승리팀만 기록")
+        leaderboardRegisterArea.classList.add('hidden');
+      }
+
+      // 통계 계산
+      const calcAvgSpeed = (times) => {
+        if (times.length === 0) return '0.0초';
+        const sum = times.reduce((acc, curr) => acc + curr, 0);
+        return `${(sum / times.length).toFixed(1)}초`;
+      };
+
+      // 홀수팀 결과 대입
+      document.getElementById('stat-p1-score').textContent = `${p1.score.toLocaleString()} 점`;
+      document.getElementById('stat-p1-correct').textContent = `${p1.correctCount} / ${MAX_ROUNDS} 문제`;
+      document.getElementById('stat-p1-combo').textContent = `${p1.maxCombo} 연속`;
+      document.getElementById('stat-p1-speed').textContent = calcAvgSpeed(p1.answerTimes);
+
+      // 짝수팀 결과 대입
+      document.getElementById('stat-p2-score').textContent = `${p2.score.toLocaleString()} 점`;
+      document.getElementById('stat-p2-correct').textContent = `${p2.correctCount} / ${MAX_ROUNDS} 문제`;
+      document.getElementById('stat-p2-combo').textContent = `${p2.maxCombo} 연속`;
+      document.getElementById('stat-p2-speed').textContent = calcAvgSpeed(p2.answerTimes);
+
+      // 리더보드 데이터 호출
+      fetchLeaderboardData();
+    }
+
+    // ==========================================
+    // 리더보드 등록 및 데이터 조회 (구글 스프레드시트 연동)
+    // ==========================================
+    
+    // 1. 구글 시트로 승리팀 점수 제출
+    function handleScoreSubmission() {
+      if (scoreSubmitted) {
+        showToast("이미 점수가 등록되었습니다!");
+        return;
+      }
+      
+      const inputVal = winnerNameInput.value.trim();
+      if (!inputVal) {
+        showToast("학생의 이름을 입력해 주세요!");
+        winnerNameInput.focus();
+        return;
+      }
+
+      // 이름 뒤에 괄호로 승리팀 기재 요건 반영 (예: 홍길동(홀수팀))
+      const formattedName = `${inputVal}(${winningTeamName})`;
+      
+      scoreSubmitted = true;
+      btnSubmitScore.disabled = true;
+      submitLoadingMsg.classList.remove('hidden');
+
+      // POST 전송 데이터 구성
+      const payload = {
+        name: formattedName,
+        score: winningScore
+      };
+
+      fetch(WEB_APP_URL, {
+        method: 'POST',
+        mode: 'no-cors', // CORS 제한 패스
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(() => {
+        // no-cors 응답 대응을 위한 강제 지연 업데이트 처리
+        setTimeout(() => {
+          if (submitLoadingMsg) submitLoadingMsg.classList.add('hidden');
+          if (leaderboardRegisterArea) leaderboardRegisterArea.classList.add('hidden'); // 등록란 숨기기
+          showToast("🏆 명예의 전당 등록이 성공했습니다!");
+          fetchLeaderboardData(); // 리더보드 갱신
+        }, 1500);
+      })
+      .catch(err => {
+        console.error("점수 전송 오류:", err);
+        showToast("점수 등록에 실패했습니다. 네트워크 상태를 확인해주세요.");
+        scoreSubmitted = false;
+        btnSubmitScore.disabled = false;
+        if (submitLoadingMsg) submitLoadingMsg.classList.add('hidden');
+      });
+    }
+
+    // 2. 구글 시트에서 최신 리더보드 데이터 가져오기
+    function fetchLeaderboardData() {
+      leaderboardBody.innerHTML = `
+        <tr>
+          <td colspan="4" class="py-12 text-gray-400">
+            <i class="fa-solid fa-spinner animate-spin text-xl text-amber-400 mb-2"></i>
+            <p>구글 시트 데이터를 갱신 중입니다...</p>
+          </td>
+        </tr>
+      `;
+
+      fetch(WEB_APP_URL)
+        .then(response => {
+          if (!response.ok) {
+            throw new Error("HTTP error " + response.status);
+          }
+          return response.json();
+        })
+        .then(result => {
+          if (result.status === "success") {
+            renderLeaderboard(result.data);
+          } else {
+            console.error("리더보드 로드 오류:", result.message);
+            leaderboardBody.innerHTML = `<tr><td colspan="4" class="py-10 text-rose-400">데이터를 가져오지 못했습니다. <br> 스크립트 에러를 확인해 주세요.</td></tr>`;
+          }
+        })
+        .catch(err => {
+          console.error("API 연동 에러:", err);
+          leaderboardBody.innerHTML = `<tr><td colspan="4" class="py-10 text-gray-400 px-4">구글 시트 데이터를 불러오지 못했습니다.<br><span class="text-xs text-rose-500 font-bold block mt-1">도움말: 새로고침 단추를 눌러 재시도 하거나 구글 시트 탭 이름을 확인하세요.</span></td></tr>`;
+        });
+    }
+
+    // 3. 리더보드 테이블 구성
+    function renderLeaderboard(data) {
+      if (!data || data.length === 0) {
+        leaderboardBody.innerHTML = `
+          <tr>
+            <td colspan="4" class="py-12 text-gray-400">
+              <i class="fa-solid fa-face-meh text-2xl mb-2 block"></i>
+              <p>아직 등록된 명예의 기록이 없습니다.</p>
+              <p class="text-xs text-gray-500 mt-1">첫 번째 승리자가 되어보세요!</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      let html = "";
+      data.forEach((item, index) => {
+        // 순위 메달 스타일링
+        let rankBadge = item.rank;
+        if (item.rank === 1) rankBadge = "🥇";
+        else if (item.rank === 2) rankBadge = "🥈";
+        else if (item.rank === 3) rankBadge = "🥉";
+
+        // 소속 팀 색상 구분
+        let nameStyle = "text-white";
+        if (item.name.includes("(홀수팀)")) {
+          nameStyle = "text-blue-300";
+        } else if (item.name.includes("(짝수팀)")) {
+          nameStyle = "text-red-300";
+        }
+
+        // 일시 축소 표현 (연도 생략)
+        let shortDate = item.date;
+        if (shortDate && shortDate.length > 10) {
+          shortDate = shortDate.substring(5);
+        }
+
+        html += `
+          <tr class="hover:bg-slate-800/40 transition duration-100">
+            <td class="py-3 font-bold text-base text-amber-400">${rankBadge}</td>
+            <td class="py-3 font-extrabold ${nameStyle} text-left pl-4">${item.name}</td>
+            <td class="py-3 font-black text-amber-300">${item.score.toLocaleString()}</td>
+            <td class="py-3 text-gray-400 text-right pr-4 text-xs font-mono">${shortDate}</td>
+          </tr>
+        `;
+      });
+
+      leaderboardBody.innerHTML = html;
+    }
+
+    // 중간 리셋 확인용 커스텀 다이얼로그 (alert 지양)
+    function confirmReset() {
+      showToast('게임이 처음으로 리셋되었습니다! 다시 플레이해주세요.');
+      if (p1.timerInterval) clearInterval(p1.timerInterval);
+      if (p2.timerInterval) clearInterval(p2.timerInterval);
+      startScreen.classList.remove('hidden');
+      resultScreen.classList.add('hidden');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast-message');
+      const text = document.getElementById('toast-text');
+      
+      text.textContent = message;
+      toast.classList.remove('opacity-0');
+      toast.classList.add('opacity-100');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100');
+        toast.classList.add('opacity-0');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
